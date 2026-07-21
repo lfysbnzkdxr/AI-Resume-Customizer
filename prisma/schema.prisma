@@ -1,0 +1,105 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 个人基本信息
+model Profile {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  location  String?
+  jobTitle  String? // 求职意向
+  summary   String? // 自我评价素材
+  updatedAt DateTime @updatedAt
+}
+
+// 教育背景
+model Education {
+  id         String  @id @default(cuid())
+  school     String
+  major      String
+  degree     String // 本科/硕士/博士
+  startDate  String
+  endDate    String?
+  gpa        String?
+  highlights String? // 在校亮点
+}
+
+// 技能
+model Skill {
+  id       String @id @default(cuid())
+  name     String
+  category String // 编程语言/框架/工具
+  level    String // 精通/熟练/了解
+}
+
+// 经历（统一模型，type 区分）
+model Experience {
+  id           String   @id @default(cuid())
+  type         String // project / internship / competition
+  title        String
+  org          String? // 公司/学校/赛事
+  role         String?
+  startDate    String?
+  endDate      String?
+  description  String // 原始描述
+  techStack    String? // 技术栈标签
+  achievements String? // 成果/量化数据
+  tags         String? // 自定义标签
+  isArchived   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// JD 解析记录
+model ParsedJD {
+  id             String   @id @default(cuid())
+  source         String // text / url
+  rawContent     String
+  url            String?
+  jobTitle       String?
+  company        String?
+  requirements   String? // JSON: 结构化要求
+  skills         String? // JSON: 提取的技能列表
+  keywords       String? // JSON: 关键词
+  responsibilities String? // JSON: 岗位职责
+  parsedAt       DateTime @default(now())
+}
+
+// 简历
+model Resume {
+  id         String   @id @default(cuid())
+  title      String
+  jdId       String? // 关联的 JD
+  content    String // JSON: 简历结构化内容
+  template   String   @default("default")
+  version    Int      @default(1)
+  matchScore Float? // 匹配度评分
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// 投递追踪
+model Application {
+  id        String   @id @default(cuid())
+  resumeId  String
+  company   String
+  position  String
+  status    String   @default("applied") // applied/interview/offer/rejected
+  note      String?
+  appliedAt DateTime @default(now())
+}
+
+// 技能同义词映射
+model SkillMapping {
+  id        String  @id @default(cuid())
+  canonical String // 标准名
+  alias     String // 别名
+  category  String?
+}
