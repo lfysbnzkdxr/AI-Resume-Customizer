@@ -1,39 +1,60 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { addSkill, deleteSkill, updateSkill } from "./actions";
+import { useState } from "react";
+import { addSkill, deleteSkill, updateSkill } from "@/lib/services/profile";
 import { Plus, Trash2, Pencil } from "lucide-react";
-
-interface Skill {
-  id: string;
-  name: string;
-  category: string;
-  level: string;
-}
+import type { Skill } from "@/lib/db";
 
 export function SkillSection({ skills }: { skills: Skill[] }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
-      await addSkill(formData);
+  async function handleAdd(formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await addSkill({
+        name: (formData.get("name") as string) || "",
+        category: (formData.get("category") as string) || "其他",
+        level: (formData.get("level") as string) || "熟练",
+      });
       setShowForm(false);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleUpdate(id: string, formData: FormData) {
-    startTransition(async () => {
-      await updateSkill(id, formData);
+  async function handleUpdate(id: string, formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await updateSkill(id, {
+        name: (formData.get("name") as string) || undefined,
+        category: (formData.get("category") as string) || undefined,
+        level: (formData.get("level") as string) || undefined,
+      });
       setEditingId(null);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "更新失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
-    startTransition(async () => {
+  async function handleDelete(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await deleteSkill(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   // 按分类分组
@@ -55,6 +76,10 @@ export function SkillSection({ skills }: { skills: Skill[] }) {
           <Plus className="h-4 w-4" /> 添加
         </button>
       </div>
+
+      {error && (
+        <p className="mb-3 text-sm text-[var(--destructive)]">{error}</p>
+      )}
 
       {/* 技能列表 */}
       <div className="space-y-4">
@@ -139,10 +164,10 @@ export function SkillSection({ skills }: { skills: Skill[] }) {
                   </div>
                   <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={saving}
                     className="rounded-md bg-[var(--primary)] px-3 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
                   >
-                    {isPending ? "..." : "保存"}
+                    {saving ? "..." : "保存"}
                   </button>
                   <button
                     type="button"
@@ -210,10 +235,10 @@ export function SkillSection({ skills }: { skills: Skill[] }) {
           </div>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={saving}
             className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
           >
-            {isPending ? "..." : "添加"}
+            {saving ? "..." : "添加"}
           </button>
           <button
             type="button"

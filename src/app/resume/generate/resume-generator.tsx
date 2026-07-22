@@ -2,52 +2,11 @@
 
 import { useState } from "react";
 import { Loader2, Sparkles, FileText } from "lucide-react";
-import { getLLMHeaders } from "@/lib/client-llm";
-
-interface Experience {
-  id: string;
-  type: string;
-  title: string;
-  org: string | null;
-  role: string | null;
-  description: string;
-  techStack: string | null;
-  achievements: string | null;
-}
-
-interface Profile {
-  name: string;
-  phone: string | null;
-  email: string | null;
-  location: string | null;
-  jobTitle: string | null;
-  summary: string | null;
-}
-
-interface Skill {
-  name: string;
-  category: string;
-  level: string;
-}
-
-interface Education {
-  school: string;
-  major: string;
-  degree: string;
-  startDate: string;
-  endDate: string | null;
-}
-
-interface JD {
-  id: string;
-  jobTitle: string | null;
-  company: string | null;
-  skills: string | null;
-  keywords: string | null;
-}
+import { generateResume } from "@/lib/services/resume";
+import type { Experience, Profile, Skill, Education, ParsedJD } from "@/lib/db";
 
 interface Props {
-  jd: JD | null;
+  jd: ParsedJD | null;
   experiences: Experience[];
   profile: Profile | null;
   skills: Skill[];
@@ -92,22 +51,8 @@ export function ResumeGenerator({
     setError("");
 
     try {
-      const res = await fetch("/api/resume/generate", {
-        method: "POST",
-        headers: getLLMHeaders(),
-        body: JSON.stringify({
-          jdId: jd?.id || null,
-          experienceIds: selectedExpIds,
-        }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "生成失败");
-      }
-
-      const data = await res.json();
-      setResumeId(data.id);
+      const resume = await generateResume(jd?.id, selectedExpIds);
+      setResumeId(resume.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "生成失败，请重试");
     } finally {
@@ -143,15 +88,9 @@ export function ResumeGenerator({
             {jd.jobTitle || "未知岗位"}
             {jd.company && ` - ${jd.company}`}
           </p>
-          {jd.skills && (
+          {jd.skills && jd.skills.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
-              {((): string[] => {
-                try {
-                  return JSON.parse(jd.skills);
-                } catch {
-                  return [];
-                }
-              })().map((skill: string, i: number) => (
+              {jd.skills.map((skill: string, i: number) => (
                 <span
                   key={i}
                   className="rounded-full bg-[var(--secondary)] px-3 py-1 text-sm"

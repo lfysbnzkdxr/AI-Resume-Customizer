@@ -1,12 +1,21 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { ProfileForm } from "./profile-form";
 import { EducationSection } from "./education-section";
 import { SkillSection } from "./skill-section";
 
-export default async function ProfilePage() {
-  const profile = await prisma.profile.findFirst();
-  const educations = await prisma.education.findMany();
-  const skills = await prisma.skill.findMany();
+export default function ProfilePage() {
+  const profile = useLiveQuery(() =>
+    db.profiles.toCollection().first().then((p) => p ?? null)
+  );
+  const educations = useLiveQuery(() => db.educations.toArray());
+  const skills = useLiveQuery(() => db.skills.toArray());
+
+  if (profile === undefined || !educations || !skills) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -17,7 +26,7 @@ export default async function ProfilePage() {
         </p>
       </div>
 
-      <ProfileForm profile={profile} />
+      <ProfileForm profile={profile ?? null} />
       <EducationSection educations={educations} />
       <SkillSection skills={skills} />
     </div>

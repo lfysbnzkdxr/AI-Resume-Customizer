@@ -1,23 +1,25 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import Link from "next/link";
 import { FileSearch, FileText } from "lucide-react";
 import { ApplicationTracker } from "./application-tracker";
 
-export default async function HistoryPage() {
-  const recentJDs = await prisma.parsedJD.findMany({
-    orderBy: { parsedAt: "desc" },
-    take: 20,
-  });
+export default function HistoryPage() {
+  const recentJDs = useLiveQuery(
+    () => db.parsedJDs.orderBy("parsedAt").reverse().limit(20).toArray()
+  );
+  const recentResumes = useLiveQuery(
+    () => db.resumes.orderBy("updatedAt").reverse().limit(20).toArray()
+  );
+  const applications = useLiveQuery(
+    () => db.applications.orderBy("appliedAt").reverse().limit(20).toArray()
+  );
 
-  const recentResumes = await prisma.resume.findMany({
-    orderBy: { updatedAt: "desc" },
-    take: 20,
-  });
-
-  const applications = await prisma.application.findMany({
-    orderBy: { appliedAt: "desc" },
-    take: 20,
-  });
+  if (!recentJDs || !recentResumes || !applications) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   return (
     <div className="space-y-8">

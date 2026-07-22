@@ -1,10 +1,17 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { ExperienceList } from "./experience-list";
 
-export default async function ExperiencesPage() {
-  const experiences = await prisma.experience.findMany({
-    orderBy: { updatedAt: "desc" },
-  });
+export default function ExperiencesPage() {
+  const experiences = useLiveQuery(
+    () => db.experiences.orderBy("updatedAt").reverse().toArray()
+  );
+
+  if (!experiences) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   return (
     <div className="space-y-8">

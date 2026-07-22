@@ -1,27 +1,34 @@
 "use client";
 
-import { useTransition } from "react";
-import { saveProfile } from "./actions";
+import { useState } from "react";
+import { saveProfile } from "@/lib/services/profile";
+import type { Profile } from "@/lib/db";
 
 interface ProfileFormProps {
-  profile: {
-    id: string;
-    name: string;
-    phone: string | null;
-    email: string | null;
-    location: string | null;
-    jobTitle: string | null;
-    summary: string | null;
-  } | null;
+  profile: Profile | null;
 }
 
 export function ProfileForm({ profile }: ProfileFormProps) {
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleSubmit(formData: FormData) {
-    startTransition(async () => {
-      await saveProfile(formData);
-    });
+  async function handleSubmit(formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await saveProfile({
+        name: (formData.get("name") as string) || "",
+        phone: (formData.get("phone") as string) || undefined,
+        email: (formData.get("email") as string) || undefined,
+        location: (formData.get("location") as string) || undefined,
+        jobTitle: (formData.get("jobTitle") as string) || undefined,
+        summary: (formData.get("summary") as string) || undefined,
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "保存失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -89,11 +96,12 @@ export function ProfileForm({ profile }: ProfileFormProps) {
         </div>
         <button
           type="submit"
-          disabled={isPending}
+          disabled={saving}
           className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
         >
-          {isPending ? "保存中..." : "保存基本信息"}
+          {saving ? "保存中..." : "保存基本信息"}
         </button>
+        {error && <p className="mt-2 text-sm text-[var(--destructive)]">{error}</p>}
       </form>
     </section>
   );

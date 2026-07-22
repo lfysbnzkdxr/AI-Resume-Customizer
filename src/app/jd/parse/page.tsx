@@ -1,11 +1,17 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import { JDParseForm } from "./jd-parse-form";
 
-export default async function JDParsePage() {
-  const recentJDs = await prisma.parsedJD.findMany({
-    orderBy: { parsedAt: "desc" },
-    take: 10,
-  });
+export default function JDParsePage() {
+  const recentJDs = useLiveQuery(
+    () => db.parsedJDs.orderBy("parsedAt").reverse().limit(10).toArray()
+  );
+
+  if (!recentJDs) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   return (
     <div className="space-y-8">

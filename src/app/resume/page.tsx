@@ -1,12 +1,19 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
 import Link from "next/link";
 import { FileText, Plus, Sparkles } from "lucide-react";
 import { ResumeDeleteButton } from "./resume-delete-button";
 
-export default async function ResumePage() {
-  const resumes = await prisma.resume.findMany({
-    orderBy: { updatedAt: "desc" },
-  });
+export default function ResumePage() {
+  const resumes = useLiveQuery(
+    () => db.resumes.orderBy("updatedAt").reverse().toArray()
+  );
+
+  if (!resumes) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   return (
     <div className="space-y-8">

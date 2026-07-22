@@ -1,29 +1,33 @@
-import { prisma } from "@/lib/prisma";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { ResumeGenerator } from "./resume-generator";
 
-export default async function GeneratePage({
-  searchParams,
-}: {
-  searchParams: { jdId?: string; expIds?: string };
-}) {
-  const { jdId, expIds } = searchParams;
-
-  // 解析推荐经历 ID
+function GeneratePageInner() {
+  const searchParams = useSearchParams();
+  const jdId = searchParams.get("jdId") || undefined;
+  const expIds = searchParams.get("expIds");
   const defaultExpIds = expIds ? expIds.split(",").filter(Boolean) : undefined;
 
-  let jd = null;
-  if (jdId) {
-    jd = await prisma.parsedJD.findUnique({ where: { id: jdId } });
+  const jd = useLiveQuery(
+    async () => (jdId ? await db.parsedJDs.get(jdId) : undefined) ?? null,
+    [jdId]
+  );
+  const experiences = useLiveQuery(
+    () => db.experiences.where("isArchived").equals(0).reverse().sortBy("updatedAt")
+  );
+  const profile = useLiveQuery(() =>
+    db.profiles.toCollection().first().then((p) => p ?? null)
+  );
+  const skills = useLiveQuery(() => db.skills.toArray());
+  const educations = useLiveQuery(() => db.educations.toArray());
+
+  if (!experiences || !skills || !educations || (jdId && jd === undefined)) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
   }
-
-  const experiences = await prisma.experience.findMany({
-    where: { isArchived: false },
-    orderBy: { updatedAt: "desc" },
-  });
-
-  const profile = await prisma.profile.findFirst();
-  const skills = await prisma.skill.findMany();
-  const educations = await prisma.education.findMany();
 
   return (
     <div className="space-y-8">
@@ -35,13 +39,21 @@ export default async function GeneratePage({
       </div>
 
       <ResumeGenerator
-        jd={jd}
+        jd={jd ?? null}
         experiences={experiences}
-        profile={profile}
+        profile={profile ?? null}
         skills={skills}
         educations={educations}
         defaultExpIds={defaultExpIds}
       />
     </div>
+  );
+}
+
+export default function GeneratePage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>}>
+      <GeneratePageInner />
+    </Suspense>
   );
 }

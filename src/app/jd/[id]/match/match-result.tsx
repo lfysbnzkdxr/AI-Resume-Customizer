@@ -2,29 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, Sparkles } from "lucide-react";
-import { getLLMHeaders } from "@/lib/client-llm";
-
-interface MatchScore {
-  overall: number;
-  skillMatch: number;
-  projectRelevance: number;
-  experienceFit: number;
-}
-
-interface RecommendedExperience {
-  id: string;
-  title: string;
-  type: string;
-  relevanceScore: number;
-  reason: string;
-}
-
-interface MatchData {
-  scores: MatchScore;
-  gapAnalysis: string[];
-  recommendedExperiences: RecommendedExperience[];
-  summary: string;
-}
+import { evaluateMatch, type MatchResult as MatchData } from "@/lib/services/match";
 
 export function MatchResult({ jdId }: { jdId: string }) {
   const [loading, setLoading] = useState(false);
@@ -37,15 +15,7 @@ export function MatchResult({ jdId }: { jdId: string }) {
     setData(null);
 
     try {
-      const res = await fetch(`/api/jd/${jdId}/match`, {
-        method: "POST",
-        headers: getLLMHeaders(),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "匹配失败");
-      }
-      const result = await res.json();
+      const result = await evaluateMatch(jdId);
       setData(result);
     } catch (e) {
       setError(e instanceof Error ? e.message : "匹配失败，请重试");

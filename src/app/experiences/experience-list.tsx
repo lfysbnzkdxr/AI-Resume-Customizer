@@ -1,23 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { addExperience, deleteExperience, updateExperience, archiveExperience, unarchiveExperience } from "./actions";
+import { useState } from "react";
+import { addExperience, deleteExperience, updateExperience, archiveExperience, unarchiveExperience } from "@/lib/services/experience";
 import { Plus, Trash2, Pencil, X, Archive, ArchiveRestore } from "lucide-react";
-
-interface Experience {
-  id: string;
-  type: string;
-  title: string;
-  org: string | null;
-  role: string | null;
-  startDate: string | null;
-  endDate: string | null;
-  description: string;
-  techStack: string | null;
-  achievements: string | null;
-  tags: string | null;
-  isArchived: boolean;
-}
+import type { Experience } from "@/lib/db";
 
 const typeLabels: Record<string, string> = {
   project: "项目",
@@ -39,7 +25,8 @@ export function ExperienceList({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("all");
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const filtered =
     filter === "all"
@@ -48,36 +35,88 @@ export function ExperienceList({
         ? experiences.filter((e) => e.isArchived)
         : experiences.filter((e) => e.type === filter && !e.isArchived);
 
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
-      await addExperience(formData);
+  async function handleAdd(formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await addExperience({
+        type: (formData.get("type") as string) || "project",
+        title: (formData.get("title") as string) || "",
+        org: (formData.get("org") as string) || undefined,
+        role: (formData.get("role") as string) || undefined,
+        startDate: (formData.get("startDate") as string) || undefined,
+        endDate: (formData.get("endDate") as string) || undefined,
+        description: (formData.get("description") as string) || "",
+        techStack: (formData.get("techStack") as string) || undefined,
+        achievements: (formData.get("achievements") as string) || undefined,
+        tags: (formData.get("tags") as string) || undefined,
+      });
       setShowForm(false);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
-    startTransition(async () => {
+  async function handleDelete(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await deleteExperience(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleUpdate(id: string, formData: FormData) {
-    startTransition(async () => {
-      await updateExperience(id, formData);
+  async function handleUpdate(id: string, formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await updateExperience(id, {
+        type: (formData.get("type") as string) || undefined,
+        title: (formData.get("title") as string) || undefined,
+        org: (formData.get("org") as string) || undefined,
+        role: (formData.get("role") as string) || undefined,
+        startDate: (formData.get("startDate") as string) || undefined,
+        endDate: (formData.get("endDate") as string) || undefined,
+        description: (formData.get("description") as string) || undefined,
+        techStack: (formData.get("techStack") as string) || undefined,
+        achievements: (formData.get("achievements") as string) || undefined,
+        tags: (formData.get("tags") as string) || undefined,
+      });
       setEditingId(null);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "更新失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleArchive(id: string) {
-    startTransition(async () => {
+  async function handleArchive(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await archiveExperience(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "归档失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleUnarchive(id: string) {
-    startTransition(async () => {
+  async function handleUnarchive(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await unarchiveExperience(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "恢复失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -106,6 +145,11 @@ export function ExperienceList({
           <Plus className="h-4 w-4" /> 新增经历
         </button>
       </div>
+
+      {/* 错误提示 */}
+      {error && (
+        <p className="rounded-md bg-[var(--destructive)]/10 px-4 py-2 text-sm text-[var(--destructive)]">{error}</p>
+      )}
 
       {/* 新增表单 */}
       {showForm && (
@@ -222,10 +266,10 @@ export function ExperienceList({
           </div>
           <button
             type="submit"
-            disabled={isPending}
+            disabled={saving}
             className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
           >
-            {isPending ? "保存中..." : "保存经历"}
+            {saving ? "保存中..." : "保存经历"}
           </button>
         </form>
       )}
@@ -414,10 +458,10 @@ export function ExperienceList({
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    disabled={isPending}
+                    disabled={saving}
                     className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
                   >
-                    {isPending ? "保存中..." : "保存修改"}
+                    {saving ? "保存中..." : "保存修改"}
                   </button>
                   <button
                     type="button"

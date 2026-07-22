@@ -3,15 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { FileSearch, Loader2 } from "lucide-react";
-import { getLLMHeaders } from "@/lib/client-llm";
+import { parseJD, parseJDFromUrl } from "@/lib/services/jd";
 import { JDDeleteButton } from "../jd-delete-button";
 
 interface ParsedJD {
   id: string;
   source: string;
-  jobTitle: string | null;
-  company: string | null;
-  skills: string | null;
+  jobTitle?: string;
+  company?: string;
+  skills: string[];
   parsedAt: Date;
 }
 
@@ -43,19 +43,21 @@ export function JDParseForm({ recentJDs }: { recentJDs: ParsedJD[] }) {
     setResult(null);
 
     try {
-      const res = await fetch("/api/jd/parse", {
-        method: "POST",
-        headers: getLLMHeaders(),
-        body: JSON.stringify({ text: jdText, url: jdUrl }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || "解析失败");
+      let jd;
+      if (jdText.trim()) {
+        jd = await parseJD(jdText.trim(), jdUrl.trim() || undefined);
+      } else {
+        jd = await parseJDFromUrl(jdUrl.trim());
       }
-
-      const data = await res.json();
-      setResult(data);
+      setResult({
+        id: jd.id,
+        jobTitle: jd.jobTitle || null,
+        company: jd.company || null,
+        skills: jd.skills,
+        requirements: jd.requirements,
+        keywords: jd.keywords,
+        responsibilities: jd.responsibilities,
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : "解析失败，请重试");
     } finally {

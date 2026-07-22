@@ -6,8 +6,8 @@ import { Download, FileText, Copy, Check } from "lucide-react";
 interface ResumeData {
   id: string;
   title: string;
-  content: string;
-  matchScore: number | null;
+  content: Record<string, unknown>;
+  matchScore?: number;
 }
 
 interface ResumeContent {
@@ -44,16 +44,24 @@ interface ResumeContent {
 export function ResumeView({ resume }: { resume: ResumeData }) {
   const [copied, setCopied] = useState(false);
 
-  let content: ResumeContent;
-  try {
-    content = JSON.parse(resume.content);
-  } catch {
+  // 运行时校验简历内容结构
+  const rawContent = resume.content as unknown as ResumeContent;
+  if (
+    !rawContent ||
+    typeof rawContent !== "object" ||
+    !rawContent.profile ||
+    typeof rawContent.profile !== "object" ||
+    !Array.isArray(rawContent.educations) ||
+    !Array.isArray(rawContent.skills) ||
+    !Array.isArray(rawContent.experiences)
+  ) {
     return (
       <div className="rounded-lg border border-[var(--destructive)] bg-[var(--card)] p-6">
         <p className="text-[var(--destructive)]">简历内容解析失败，数据可能已损坏。请尝试重新生成简历。</p>
       </div>
     );
   }
+  const content = rawContent;
 
   function generateMarkdown() {
     const { profile, summary, educations, skills, experiences } = content;

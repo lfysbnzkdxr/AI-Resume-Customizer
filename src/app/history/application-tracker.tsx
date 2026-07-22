@@ -1,23 +1,9 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { addApplication, updateApplicationStatus, deleteApplication } from "./actions";
+import { useState } from "react";
+import { addApplication, updateApplication, deleteApplication } from "@/lib/services/application";
 import { Plus, Trash2 } from "lucide-react";
-
-interface Application {
-  id: string;
-  resumeId: string;
-  company: string;
-  position: string;
-  status: string;
-  note: string | null;
-  appliedAt: Date;
-}
-
-interface Resume {
-  id: string;
-  title: string;
-}
+import type { Application, Resume } from "@/lib/db";
 
 const statusOptions = [
   { value: "applied", label: "已投递" },
@@ -41,25 +27,50 @@ export function ApplicationTracker({
   resumes: Resume[];
 }) {
   const [showForm, setShowForm] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
-      await addApplication(formData);
+  async function handleAdd(formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await addApplication({
+        resumeId: (formData.get("resumeId") as string) || "",
+        company: (formData.get("company") as string) || "",
+        position: (formData.get("position") as string) || "",
+        status: (formData.get("status") as string) || "applied",
+        note: (formData.get("note") as string) || undefined,
+      });
       setShowForm(false);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleStatusChange(id: string, status: string) {
-    startTransition(async () => {
-      await updateApplicationStatus(id, status);
-    });
+  async function handleStatusChange(id: string, status: string) {
+    setError("");
+    setSaving(true);
+    try {
+      await updateApplication(id, { status });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "更新失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
-    startTransition(async () => {
+  async function handleDelete(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await deleteApplication(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -73,6 +84,10 @@ export function ApplicationTracker({
           <Plus className="h-4 w-4" /> 记录投递
         </button>
       </div>
+
+      {error && (
+        <p className="mb-3 text-sm text-[var(--destructive)]">{error}</p>
+      )}
 
       {/* 添加表单 */}
       {showForm && (
@@ -124,10 +139,10 @@ export function ApplicationTracker({
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={isPending}
+              disabled={saving}
               className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
             >
-              {isPending ? "保存中..." : "保存"}
+              {saving ? "保存中..." : "保存"}
             </button>
             <button
               type="button"

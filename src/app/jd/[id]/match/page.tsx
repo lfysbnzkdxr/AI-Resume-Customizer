@@ -1,17 +1,22 @@
-import { prisma } from "@/lib/prisma";
-import { notFound } from "next/navigation";
+"use client";
+
+import { useLiveQuery } from "dexie-react-hooks";
+import { db } from "@/lib/db";
+import { useParams } from "next/navigation";
 import { MatchResult } from "./match-result";
 
-export default async function MatchPage({
-  params,
-}: {
-  params: { id: string };
-}) {
-  const { id } = params;
-  const jd = await prisma.parsedJD.findUnique({ where: { id } });
+export default function MatchPage() {
+  const params = useParams();
+  const id = params.id as string;
+
+  const jd = useLiveQuery(() => db.parsedJDs.get(id).then((j) => j ?? null), [id]);
+
+  if (jd === undefined) {
+    return <div className="animate-pulse p-8 text-center text-[var(--muted-foreground)]">加载中...</div>;
+  }
 
   if (!jd) {
-    notFound();
+    return <div className="p-8 text-center text-[var(--muted-foreground)]">JD 不存在</div>;
   }
 
   return (

@@ -1,43 +1,68 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { addEducation, deleteEducation, updateEducation } from "./actions";
+import { useState } from "react";
+import { addEducation, deleteEducation, updateEducation } from "@/lib/services/profile";
 import { Plus, Trash2, Pencil } from "lucide-react";
-
-interface Education {
-  id: string;
-  school: string;
-  major: string;
-  degree: string;
-  startDate: string;
-  endDate: string | null;
-  gpa: string | null;
-  highlights: string | null;
-}
+import type { Education } from "@/lib/db";
 
 export function EducationSection({ educations }: { educations: Education[] }) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
-  function handleAdd(formData: FormData) {
-    startTransition(async () => {
-      await addEducation(formData);
+  async function handleAdd(formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await addEducation({
+        school: (formData.get("school") as string) || "",
+        major: (formData.get("major") as string) || "",
+        degree: (formData.get("degree") as string) || "",
+        startDate: (formData.get("startDate") as string) || "",
+        endDate: (formData.get("endDate") as string) || undefined,
+        gpa: (formData.get("gpa") as string) || undefined,
+        highlights: (formData.get("highlights") as string) || undefined,
+      });
       setShowForm(false);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "添加失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleUpdate(id: string, formData: FormData) {
-    startTransition(async () => {
-      await updateEducation(id, formData);
+  async function handleUpdate(id: string, formData: FormData) {
+    setError("");
+    setSaving(true);
+    try {
+      await updateEducation(id, {
+        school: (formData.get("school") as string) || undefined,
+        major: (formData.get("major") as string) || undefined,
+        degree: (formData.get("degree") as string) || undefined,
+        startDate: (formData.get("startDate") as string) || undefined,
+        endDate: (formData.get("endDate") as string) || undefined,
+        gpa: (formData.get("gpa") as string) || undefined,
+        highlights: (formData.get("highlights") as string) || undefined,
+      });
       setEditingId(null);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "更新失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
-  function handleDelete(id: string) {
-    startTransition(async () => {
+  async function handleDelete(id: string) {
+    setError("");
+    setSaving(true);
+    try {
       await deleteEducation(id);
-    });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "删除失败，请重试");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -51,6 +76,10 @@ export function EducationSection({ educations }: { educations: Education[] }) {
           <Plus className="h-4 w-4" /> 添加
         </button>
       </div>
+
+      {error && (
+        <p className="mb-3 text-sm text-[var(--destructive)]">{error}</p>
+      )}
 
       {/* 已有教育经历列表 */}
       <div className="space-y-3">
@@ -152,10 +181,10 @@ export function EducationSection({ educations }: { educations: Education[] }) {
               <div className="flex gap-2">
                 <button
                   type="submit"
-                  disabled={isPending}
+                  disabled={saving}
                   className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
                 >
-                  {isPending ? "保存中..." : "保存修改"}
+                  {saving ? "保存中..." : "保存修改"}
                 </button>
                 <button
                   type="button"
@@ -231,10 +260,10 @@ export function EducationSection({ educations }: { educations: Education[] }) {
           <div className="flex gap-2">
             <button
               type="submit"
-              disabled={isPending}
+              disabled={saving}
               className="rounded-md bg-[var(--primary)] px-4 py-2 text-sm font-medium text-[var(--primary-foreground)] hover:opacity-90 disabled:opacity-50"
             >
-              {isPending ? "保存中..." : "保存"}
+              {saving ? "保存中..." : "保存"}
             </button>
             <button
               type="button"
